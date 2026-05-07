@@ -1,0 +1,21 @@
+[project]
+name = "umeko-serial-mcp"
+version = "0.1.3"
+description = "Local serial communication service based on MCP protocol with built-in Web monitoring"
+readme = "README.md"
+authors = [
+    { name = "umeiko", email = "umeko@stu.xmu.edu.cn" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.27.0",
+    "pyserial>=3.5",
+    "websockets>=16.0",
+]
+
+[project.scripts]
+start-serial-mcp = "umeko_serial_mcp:main"
+
+[build-system]
+requires = ["uv_build>=0.9.28,<0.10.0"]
+build-backend = "uv_build"

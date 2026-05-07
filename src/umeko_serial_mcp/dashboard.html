@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>MCP 串口监控与干预控制台</title>
+    <style>
+        body {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', 'Courier New', 'Noto Sans Mono CJK SC', 'Sarasa Mono SC', 'Microsoft YaHei Mono', monospace;
+            margin: 0;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+            font-size: 13px;
+        }
+        h2 {
+            color: #569cd6;
+            margin: 0 0 8px 0;
+            font-size: 16px;
+        }
+        /* 串口控制面板 */
+        .serial-panel {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding: 6px 8px;
+            background-color: #252526;
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
+        .serial-panel label {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .serial-panel input[type="text"] {
+            flex: 1;
+            padding: 4px 6px;
+            background-color: #1e1e1e;
+            color: #fff;
+            border: 1px solid #3c3c3c;
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: 3px;
+        }
+        .serial-panel input[type="text"]:disabled {
+            background-color: #1e1e1e;
+            color: #858585;
+        }
+        .serial-panel select {
+            padding: 4px 6px;
+            background-color: #1e1e1e;
+            color: #fff;
+            border: 1px solid #3c3c3c;
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: 3px;
+        }
+        .serial-panel select:disabled {
+            color: #858585;
+        }
+        .serial-panel button {
+            padding: 4px 14px;
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        .serial-panel button:hover {
+            filter: brightness(1.15);
+        }
+        .status-label {
+            min-width: 180px;
+        }
+        .status-connected { color: #4ec9b0; }
+        .status-disconnected { color: #f48771; }
+        /* 日志区域 */
+        #log-container {
+            flex: 1;
+            background-color: #000;
+            border: 1px solid #444;
+            padding: 6px 8px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+        .log-entry {
+            margin-bottom: 2px;
+            line-height: 1.35;
+        }
+        .timestamp {
+            color: #858585;
+            font-weight: normal;
+        }
+        .msg-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .source-LLM { color: #c586c0; font-weight: bold; }
+        .source-HARDWARE { color: #4ec9b0; font-weight: bold; }
+        .source-USER_OVERRIDE { color: #ce9178; font-weight: bold;}
+        .source-SYSTEM { color: #808080; font-style: italic; }
+        .controls { display: flex; gap: 8px; }
+        .controls input[type="text"] {
+            flex: 1;
+            padding: 6px 8px;
+            background-color: #252526;
+            color: #fff;
+            border: 1px solid #3c3c3c;
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: 3px;
+        }
+        .controls input[type="text"]:focus { outline: none; border-color: #007acc; }
+        .controls button {
+            padding: 6px 14px;
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        .controls button:hover { background-color: #1177bb; }
+        .status { position: absolute; top: 12px; right: 12px; font-size: 12px; }
+        .status.connected { color: #4ec9b0; }
+        .status.disconnected { color: #f48771; }
+    </style>
+</head>
+<body>
+    <h2>串口监视器</h2>
+    <div id="ws-status" class="status disconnected">WebSocket: 未连接</div>
+
+    <!-- 串口控制面板 -->
+    <div class="serial-panel">
+        <label id="serial-status-label" class="status-label status-disconnected">串口: 未连接</label>
+        <input type="text" id="serial-port-input" placeholder="端口，如 /dev/cu.usbmodem101" value="/dev/cu.usbmodem101">
+        <select id="serial-baud-select">
+            <option value="9600">9600</option>
+            <option value="115200" selected>115200</option>
+            <option value="921600">921600</option>
+        </select>
+        <button id="serial-toggle-btn" onclick="toggleSerial()">连接</button>
+    </div>
+
+    <div id="log-container"></div>
+    <div class="controls">
+        <input type="text" id="cmd-input" placeholder="输入指令 (↑↓ 切换历史)..." autocomplete="off">
+        <button onclick="sendCommand()">发送 (干预)</button>
+    </div>
+
+    <script>
+        const logContainer = document.getElementById('log-container');
+        const statusEl = document.getElementById('ws-status');
+        const cmdInput = document.getElementById('cmd-input');
+        const serialStatusLabel = document.getElementById('serial-status-label');
+        const serialPortInput = document.getElementById('serial-port-input');
+        const serialBaudSelect = document.getElementById('serial-baud-select');
+        const serialToggleBtn = document.getElementById('serial-toggle-btn');
+
+        const wsPort = {WS_PORT};
+        const wsUrl = 'ws://' + window.location.hostname + ':' + wsPort;
+        let ws;
+
+        // ---- 命令历史 ----
+        const commandHistory = [];
+        let historyIndex = -1;
+        let draftInput = '';
+
+        // ---- 串口状态 ----
+        let serialState = { connected: false, port: null, baudrate: 115200 };
+
+        function connect() {
+            ws = new WebSocket(wsUrl);
+            ws.onopen = () => {
+                statusEl.textContent = 'WebSocket: 已连接';
+                statusEl.className = 'status connected';
+                appendLog('SYSTEM', '监控面板已连接至 MCP 底层服务。');
+            };
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'status') {
+                    serialState = {
+                        connected: data.connected,
+                        port: data.port,
+                        baudrate: data.baudrate
+                    };
+                    updateSerialUI();
+                } else {
+                    appendLog(data.source, data.msg);
+                }
+            };
+            ws.onclose = () => {
+                statusEl.textContent = 'WebSocket: 已断开 (重连中...)';
+                statusEl.className = 'status disconnected';
+                // 断线时重置串口状态显示
+                serialState = { connected: false, port: null, baudrate: 115200 };
+                updateSerialUI();
+                setTimeout(connect, 3000);
+            };
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function appendLog(source, msg) {
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" });
+            let sourceLabel = '';
+            switch(source) {
+                case 'LLM': sourceLabel = '[AI Agent 发出]'; break;
+                case 'HARDWARE': sourceLabel = '[下位机 返回]'; break;
+                case 'USER_OVERRIDE': sourceLabel = '[人类 手动发送]'; break;
+                case 'SYSTEM': sourceLabel = '[系统]'; break;
+            }
+            const normalizedMsg = (msg || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            const htmlMsg = escapeHtml(normalizedMsg).replace(/\n/g, '<br>');
+            div.innerHTML = `<span class="timestamp">[${time}]</span> <span class="source-${source}">${sourceLabel}</span> <span class="msg-content">${htmlMsg}</span>`;
+            logContainer.appendChild(div);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function sendCommand() {
+            const cmd = cmdInput.value.trim();
+            if (!cmd) return;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ action: 'write', payload: cmd }));
+                commandHistory.push(cmd);
+                if (commandHistory.length > 50) commandHistory.shift();
+                historyIndex = -1;
+                draftInput = '';
+                cmdInput.value = '';
+            }
+        }
+
+        function toggleSerial() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            if (serialState.connected) {
+                ws.send(JSON.stringify({ action: 'close' }));
+            } else {
+                const port = serialPortInput.value.trim();
+                const baud = parseInt(serialBaudSelect.value);
+                if (port) {
+                    ws.send(JSON.stringify({ action: 'connect', payload: { port, baudrate: baud } }));
+                }
+            }
+        }
+
+        function updateSerialUI() {
+            if (serialState.connected) {
+                serialStatusLabel.textContent = `串口: ${serialState.port}`;
+                serialStatusLabel.className = 'status-label status-connected';
+                serialToggleBtn.textContent = '断开';
+                serialToggleBtn.style.backgroundColor = '#c75450';
+                serialPortInput.value = serialState.port || '';
+                serialPortInput.disabled = true;
+                serialBaudSelect.value = String(serialState.baudrate || 115200);
+                serialBaudSelect.disabled = true;
+            } else {
+                serialStatusLabel.textContent = '串口: 未连接';
+                serialStatusLabel.className = 'status-label status-disconnected';
+                serialToggleBtn.textContent = '连接';
+                serialToggleBtn.style.backgroundColor = '#0e639c';
+                serialPortInput.disabled = false;
+                serialBaudSelect.disabled = false;
+            }
+        }
+
+        cmdInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                sendCommand();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (commandHistory.length === 0) return;
+                if (historyIndex === -1) {
+                    draftInput = cmdInput.value;
+                }
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    cmdInput.value = commandHistory[commandHistory.length - 1 - historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex === -1) return;
+                historyIndex--;
+                if (historyIndex === -1) {
+                    cmdInput.value = draftInput;
+                } else {
+                    cmdInput.value = commandHistory[commandHistory.length - 1 - historyIndex];
+                }
+            }
+        });
+
+        connect();
+    </script>
+</body>
+</html>
