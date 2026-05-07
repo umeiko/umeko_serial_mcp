@@ -12,7 +12,7 @@
   让 AI 助手通过自然语言与你的单片机、嵌入式设备直接对话。
 </p>
 
-![alt text](assets/image-1.png)
+![Dashboard](https://github.com/umeiko/umeko_serial_mcp/raw/main/assets/image-1.png)
 ---
 
 ## ✨ 功能特性
@@ -37,14 +37,30 @@
 
 ## 📦 安装
 
-### 1. 克隆仓库
+### 方式一：通过 PyPI 安装（推荐）
 
 ```bash
-git clone <仓库地址>
+# 使用 uvx 直接运行（无需安装）
+uvx --from umeko-serial-mcp start-serial-mcp
+```
+
+或使用 pip：
+
+```bash
+pip install umeko-serial-mcp
+start-serial-mcp
+```
+
+### 方式二：本地开发安装
+
+#### 1. 克隆仓库
+
+```bash
+git clone https://github.com/umeiko/umeko_serial_mcp.git
 cd umeko_serial_mcp
 ```
 
-### 2. 安装依赖
+#### 2. 安装依赖
 
 确保已安装 [uv](https://docs.astral.sh/uv/)：
 
@@ -52,7 +68,7 @@ cd umeko_serial_mcp
 uv sync
 ```
 
-### 3. 本地运行
+#### 3. 本地运行
 
 ```bash
 # 直接运行源码
@@ -78,8 +94,7 @@ uvx --from . start-serial-mcp
       "command": "uvx",
       "args": [
         "--from",
-        "/path/to/umeko_serial_mcp",
-        "--reinstall",
+        "umeko-serial-mcp",
         "start-serial-mcp"
       ]
     }
@@ -87,7 +102,7 @@ uvx --from . start-serial-mcp
 }
 ```
 
-> 将 `/path/to/umeko_serial_mcp` 替换为你本地的实际路径。`--reinstall` 可强制刷新缓存。
+> 如果你使用本地开发版本，将 `umeko-serial-mcp` 替换为本地路径（如 `/path/to/umeko_serial_mcp`），并加上 `--reinstall` 参数强制刷新缓存。
 
 配置保存并重启客户端后，即可通过自然语言调用串口功能。
 
@@ -125,4 +140,4 @@ uvx --from . start-serial-mcp
 - **双向干预**：浏览器和 LLM 均可控制串口，状态实时同步
 ---
 
-![alt text](assets/image.png)
+![Serial Panel](https://github.com/umeiko/umeko_serial_mcp/raw/main/assets/image.png)
