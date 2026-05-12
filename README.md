@@ -9,7 +9,7 @@
 
 <p align="center">
   <b>基于 MCP 协议的本地串口通信服务，内置实时 Web 监控面板。</b><br>
-  让 AI 助手通过自然语言与你的单片机、嵌入式设备直接对话。
+  通过自然语言让 AI 助手与你的单片机、嵌入式设备直接对话。
 </p>
 
 ![Dashboard](https://github.com/umeiko/umeko_serial_mcp/raw/main/assets/image-1.png)
@@ -20,6 +20,7 @@
 - 🖥️ **MCP 支持** — 通过 Model Context Protocol 与 AI 客户端无缝集成
 - 🔌 **串口控制** — 自动扫描、连接、读写串口设备
 - 🌐 **Web 监控面板** — 内置 HTTP + WebSocket 双端口服务，浏览器实时旁路监控
+- **兼容 Windows, MacOS, Linux**
 ---
 
 ## 🛠️ 可用工具
@@ -34,10 +35,52 @@
 | `start_monitor_ui` | 启动 Web 监控面板（默认 HTTP 8080 / WebSocket 8081） |
 
 ---
+## 📦 直接配置到AI助手中（推荐）
+本项目已经打包上传到了`uv`与`pypi`仓库，各大AI助手中可以直接通过以下命令行添加，会自动拉取并配置。
 
-## 📦 安装
+### 通过命令行添加
+```bash
+# claude code
+claude mcp add serial-mcp -- uvx --from umeko-serial-mcp start-serial-mcp
+```
 
-### 方式一：通过 PyPI 安装（推荐）
+```bash
+# kimi code
+kimi mcp add --transport stdio serial-mcp -- uvx --from umeko-serial-mcp start-serial-mcp
+```
+
+```bash
+# codex
+codex mcp add serial-mcp -- uvx --from umeko-serial-mcp start-serial-mcp
+```
+### 使用 toml 添加 (Codex)
+这是 Codex CLI 默认和推荐的配置格式 。打开你的配置文件（如 `~/.codex/config.toml`），添加以下内容：
+```toml
+[mcp_servers.serial-mcp]
+command = "uvx"
+args = ["--from", "umeko-serial-mcp", "start-serial-mcp"]
+```
+
+### 通过JSON添加
+`🦞OpenClaw`, `Cursor`, `Cline`, `TRAE`, [Cherry Studio](https://www.cherry-ai.com/), [Qwen Chat](https://qwen.ai/download)等其它客户端，在mcp服务器设置中，选择使用json添加并且粘贴以下字段。
+```json
+{
+  "mcpServers": {
+    "serial-mcp": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "umeko-serial-mcp",
+        "start-serial-mcp"
+      ]
+    }
+  }
+}
+```
+
+## 📦 手动下载安装运行 
+如果你想要自定义修改本工具使用。
+### 方式一：通过 Python 安装
 
 ```bash
 # 使用 uvx 直接运行（无需安装）
@@ -83,9 +126,9 @@ uvx --from . start-serial-mcp
 
 ---
 
-## ⚙️ 客户端配置
+### ⚙️ 客户端配置示例
 
-在支持 MCP 的客户端（如 Claude-code、Cursor、Cline 等）的 `mcp.json` 中添加：
+如果要让客户端使用你本地部署的本服务，在支持 MCP 的客户端（如 Claude-code、Cursor、Cline 等）的 `mcp.json` 中添加：
 
 ```json
 {
@@ -94,15 +137,16 @@ uvx --from . start-serial-mcp
       "command": "uvx",
       "args": [
         "--from",
-        "umeko-serial-mcp",
-        "start-serial-mcp"
+        "/path/to/umeko_serial_mcp",
+        "start-serial-mcp",
+        "--reinstall"
       ]
     }
   }
 }
 ```
 
-> 如果你使用本地开发版本，将 `umeko-serial-mcp` 替换为本地路径（如 `/path/to/umeko_serial_mcp`），并加上 `--reinstall` 参数强制刷新缓存。
+> 将 `/path/to/umeko_serial_mcp` 替换为本地路径（如 `/home/user/umeko_serial_mcp`），并加上 `--reinstall` 参数强制刷新缓存。
 
 配置保存并重启客户端后，即可通过自然语言调用串口功能。
 
@@ -129,15 +173,7 @@ uvx --from . start-serial-mcp
 - 💬 实时查看 LLM 与单片机的全部对话
 - ✏️ 手动下发命令（旁路干预）
 
----
-
-## 🖥️ Web 监控面板
-
-启动监控服务后，浏览器访问 `http://localhost:8080`：
-
-- **串口控制面板**：状态指示、端口输入、波特率选择、连接/断开按钮
-- **实时日志流**：用户命令、AI 命令、下位机响应，按时间线展示
-- **双向干预**：浏览器和 LLM 均可控制串口，状态实时同步
----
-
 ![Serial Panel](https://github.com/umeiko/umeko_serial_mcp/raw/main/assets/image.png)
+---
+
+
