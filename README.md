@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
-  <img src="https://img.shields.io/badge/Version-0.1.3-orange" alt="Version 0.1.3">
+  <img src="https://img.shields.io/badge/Version-0.1.4-orange" alt="Version 0.1.4">
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey" alt="Platform">
 </p>
 
@@ -45,14 +45,27 @@ claude mcp add serial-mcp -- uvx --from umeko-serial-mcp start-serial-mcp
 ```
 
 ```bash
-# kimi code
-kimi mcp add --transport stdio serial-mcp -- uvx --from umeko-serial-mcp start-serial-mcp
-```
-
-```bash
 # codex
 codex mcp add serial-mcp -- uvx --from umeko-serial-mcp start-serial-mcp
 ```
+
+### 使用 mcp.json 添加 (Kimi Code)
+Kimi Code 通过 `mcp.json` 配置 MCP 服务器。编辑用户级配置 `~/.kimi-code/mcp.json`（或项目级 `.kimi-code/mcp.json`），添加以下内容：
+```json
+{
+  "mcpServers": {
+    "serial-mcp": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "umeko-serial-mcp",
+        "start-serial-mcp"
+      ]
+    }
+  }
+}
+```
+也可以在 Kimi Code 的 TUI 中运行 `/mcp-config` 交互式添加；配置后运行 `/mcp` 可查看连接状态。
 ### 使用 toml 添加 (Codex)
 这是 Codex CLI 默认和推荐的配置格式 。打开你的配置文件（如 `~/.codex/config.toml`），添加以下内容：
 ```toml

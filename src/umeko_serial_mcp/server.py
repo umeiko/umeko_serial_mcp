@@ -1,4 +1,9 @@
-from mcp.server.fastmcp import FastMCP
+try:
+    # mcp >= 2.0: FastMCP 更名为 MCPServer 并移至 mcp.server.mcpserver
+    from mcp.server.mcpserver import MCPServer as FastMCP
+except ImportError:
+    # mcp 1.x 兼容路径
+    from mcp.server.fastmcp import FastMCP
 import serial
 import serial.tools.list_ports
 import threading
